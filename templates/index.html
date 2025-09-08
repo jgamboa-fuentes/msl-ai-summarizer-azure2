@@ -1,81 +1,105 @@
-{% extends "base.html" %}
-
-{% block title %}MSL INSIGHTS AI ANALYSER{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}MSL INSIGHTS AI ANALYSER{% endblock
+%} {% block content %}
 <div class="text-center mb-5">
     <h1 class="display-5 fw-bold">
         <i class="fas fa-magic-sparkles text-primary"></i>
         MSL Insights AI Summarizer Tool
     </h1>
     <p class="lead text-muted">
-        Upload your Excel file to automatically generate summaries for medical statements.
+        Upload your Excel file to automatically generate summaries for medical
+        statements.
     </p>
 </div>
 
 <div class="card">
     <div class="card-body p-4 p-md-5">
-
         <div id="upload-section">
-            <h4 class="card-title text-center mb-4">Step 1: Upload Your File</h4>
-            <div id="drop-zone" class="border-2 border-dashed rounded-3 p-5 text-center cursor-pointer" style="border-style: dashed;">
-                <input type="file" id="file-input" class="d-none" accept=".xlsx, .xls, .xlsm">
+            <h4 class="card-title text-center mb-4">
+                Step 1: Upload Your File
+            </h4>
+            <div
+                id="drop-zone"
+                class="border-2 border-dashed rounded-3 p-5 text-center cursor-pointer"
+                style="border-style: dashed"
+            >
+                <input
+                    type="file"
+                    id="file-input"
+                    class="d-none"
+                    accept=".xlsx, .xls, .xlsm"
+                />
                 <i class="fas fa-file-excel fa-3x text-success mb-3"></i>
-                <p class="text-muted mb-0">Drag & drop your Excel file here, or click to select.</p>
+                <p class="text-muted mb-0">
+                    Drag & drop your Excel file here, or click to select.
+                </p>
             </div>
-            <div id="file-info" class="mt-3 text-center text-muted d-none"></div>
+            <div
+                id="file-info"
+                class="mt-3 text-center text-muted d-none"
+            ></div>
         </div>
 
         <div id="process-section" class="d-none">
             <h4 class="card-title text-center mb-4">Processing...</h4>
-            <div class="progress" style="height: 30px;">
-                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+            <div class="progress" style="height: 30px">
+                <div
+                    id="progress-bar"
+                    class="progress-bar progress-bar-striped progress-bar-animated"
+                    role="progressbar"
+                    style="width: 0%"
+                    aria-valuenow="0"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                ></div>
             </div>
-            <p id="progress-text" class="mt-3 text-center text-muted">Please wait while we process your document.</p>
+            <p id="progress-text" class="mt-3 text-center text-muted">
+                Please wait while we process your document.
+            </p>
         </div>
 
         <div id="download-section" class="d-none text-center">
             <h4 class="card-title text-success mb-3">
                 <i class="fas fa-check-circle"></i> Processing Complete!
             </h4>
-            <p class="text-muted mb-4">Your summarized file is ready for download.</p>
+            <p class="text-muted mb-4">
+                Your summarized file is ready for download.
+            </p>
             <button id="download-btn" class="btn btn-success btn-lg">
                 <i class="fas fa-download me-2"></i> Download File
             </button>
         </div>
-
     </div>
-     <div class="card-footer text-center">
+    <div class="card-footer text-center">
         <button id="config-btn" class="btn btn-secondary">
-             <i class="fas fa-cog me-2"></i> Configure Prompts
+            <i class="fas fa-cog me-2"></i> Configure Prompts
         </button>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
+{% endblock %} {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener("DOMContentLoaded", function () {
         // UI Elements
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
-        const fileInfo = document.getElementById('file-info');
-        const uploadSection = document.getElementById('upload-section');
-        const processSection = document.getElementById('process-section');
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = document.getElementById('progress-text');
-        const downloadSection = document.getElementById('download-section');
-        const downloadBtn = document.getElementById('download-btn');
+        const dropZone = document.getElementById("drop-zone");
+        const fileInput = document.getElementById("file-input");
+        const fileInfo = document.getElementById("file-info");
+        const uploadSection = document.getElementById("upload-section");
+        const processSection = document.getElementById("process-section");
+        const progressBar = document.getElementById("progress-bar");
+        const progressText = document.getElementById("progress-text");
+        const downloadSection = document.getElementById("download-section");
+        const downloadBtn = document.getElementById("download-btn");
 
         // Modal Elements
-        const configBtn = document.getElementById('config-btn');
-        const configModalEl = document.getElementById('config-modal');
+        const configBtn = document.getElementById("config-btn");
+        const configModalEl = document.getElementById("config-modal");
         const configModal = new bootstrap.Modal(configModalEl);
-        const saveConfigBtn = document.getElementById('save-config-btn');
-        const restoreDefaultsBtn = document.getElementById('restore-defaults-btn');
-        const prompt1Textarea = document.getElementById('prompt1');
-        const prompt2Textarea = document.getElementById('prompt2');
-        const prompt3Textarea = document.getElementById('prompt3');
+        const saveConfigBtn = document.getElementById("save-config-btn");
+        const restoreDefaultsBtn = document.getElementById(
+            "restore-defaults-btn",
+        );
+        const prompt1Textarea = document.getElementById("prompt1");
+        const prompt2Textarea = document.getElementById("prompt2");
+        const prompt3Textarea = document.getElementById("prompt3");
 
         let uploadedFile = null;
         let processedFileBlob = null;
@@ -84,20 +108,23 @@
         const defaultPrompts = {
             prompt1: `Return ONE concise medical insight (4–6 words). No preamble, no bullets, no quotes, no lists. If needed, reuse a term from the statement. Context: MSL for rare metabolic bone disorders / OI. Statement: `,
             prompt2: `Return ONE concise medical insight (4–6 words). No preamble, no bullets, no quotes, no lists. If needed, reuse a term from the statement. Context: MSL for IEM (LC-FAOD, Sanfilippo, MPS VII, GSD1a, OTC). Statement: `,
-            prompt3: `Return EXACTLY ONE label (verbatim) from this list and nothing else: Biomarkers/Labs; CI / SOC; Competitive Intel; Conventional Therapies; Data Gaps; Dental; Diagnosis; Diagnosis/Genetic Testing; Disease State; DMP; DMP Registry; Dosing; Dosing/Administration; Dosing/Administration/Formulation; Education Gaps; Efficacy; Formulation; Genetic Testing; HEOR; Lab Diagnostics; Long-Term Patient Management; Med Info; Medication Access/Supply; MOA; MOD; Non-Bisphosphonate Treatments (OI); Other; Outcome Measures; Patient Pathway/Patient Journey; Payor; PROs; Research; Safety; Standard Of Care; Transition Of Care; Treatment Initiation; Unmet Need. Statement: `
+            prompt3: `Return EXACTLY ONE label (verbatim) from this list and nothing else: Biomarkers/Labs; CI / SOC; Competitive Intel; Conventional Therapies; Data Gaps; Dental; Diagnosis; Diagnosis/Genetic Testing; Disease State; DMP; DMP Registry; Dosing; Dosing/Administration; Dosing/Administration/Formulation; Education Gaps; Efficacy; Formulation; Genetic Testing; HEOR; Lab Diagnostics; Long-Term Patient Management; Med Info; Medication Access/Supply; MOA; MOD; Non-Bisphosphonate Treatments (OI); Other; Outcome Measures; Patient Pathway/Patient Journey; Payor; PROs; Research; Safety; Standard Of Care; Transition Of Care; Treatment Initiation; Unmet Need. Statement: `,
         };
 
         // --- Prompt Management ---
         function loadPrompts() {
-            prompt1Textarea.value = localStorage.getItem('prompt1') || defaultPrompts.prompt1;
-            prompt2Textarea.value = localStorage.getItem('prompt2') || defaultPrompts.prompt2;
-            prompt3Textarea.value = localStorage.getItem('prompt3') || defaultPrompts.prompt3;
+            prompt1Textarea.value =
+                localStorage.getItem("prompt1") || defaultPrompts.prompt1;
+            prompt2Textarea.value =
+                localStorage.getItem("prompt2") || defaultPrompts.prompt2;
+            prompt3Textarea.value =
+                localStorage.getItem("prompt3") || defaultPrompts.prompt3;
         }
 
         function savePrompts() {
-            localStorage.setItem('prompt1', prompt1Textarea.value);
-            localStorage.setItem('prompt2', prompt2Textarea.value);
-            localStorage.setItem('prompt3', prompt3Textarea.value);
+            localStorage.setItem("prompt1", prompt1Textarea.value);
+            localStorage.setItem("prompt2", prompt2Textarea.value);
+            localStorage.setItem("prompt3", prompt3Textarea.value);
             configModal.hide();
         }
 
@@ -111,7 +138,7 @@
         function handleFile(file) {
             uploadedFile = file;
             fileInfo.textContent = `Selected file: ${file.name}`;
-            fileInfo.classList.remove('d-none');
+            fileInfo.classList.remove("d-none");
             // A file is selected, so trigger the process immediately.
             startSummarization();
         }
@@ -119,25 +146,37 @@
         async function startSummarization() {
             if (!uploadedFile) return;
 
-            uploadSection.classList.add('d-none');
-            processSection.classList.remove('d-none');
-            progressText.textContent = 'Uploading and processing... this may take a moment.';
+            uploadSection.classList.add("d-none");
+            processSection.classList.remove("d-none");
+            progressText.textContent =
+                "Uploading and processing... this may take some minutes.";
             simulateProgress();
 
             const formData = new FormData();
-            formData.append('file', uploadedFile);
-            formData.append('prompt1', localStorage.getItem('prompt1') || defaultPrompts.prompt1);
-            formData.append('prompt2', localStorage.getItem('prompt2') || defaultPrompts.prompt2);
-            formData.append('prompt3', localStorage.getItem('prompt3') || defaultPrompts.prompt3);
+            formData.append("file", uploadedFile);
+            formData.append(
+                "prompt1",
+                localStorage.getItem("prompt1") || defaultPrompts.prompt1,
+            );
+            formData.append(
+                "prompt2",
+                localStorage.getItem("prompt2") || defaultPrompts.prompt2,
+            );
+            formData.append(
+                "prompt3",
+                localStorage.getItem("prompt3") || defaultPrompts.prompt3,
+            );
 
             try {
-                const response = await fetch('/summarize', {
-                    method: 'POST',
+                const response = await fetch("/summarize", {
+                    method: "POST",
                     body: formData,
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ error: 'An unknown server error occurred.' }));
+                    const errorData = await response.json().catch(() => ({
+                        error: "An unknown server error occurred.",
+                    }));
                     throw new Error(errorData.error);
                 }
 
@@ -145,15 +184,14 @@
 
                 // Finalize progress and show download section
                 clearInterval(progressInterval);
-                progressBar.style.width = '100%';
-                processSection.classList.add('d-none');
-                downloadSection.classList.remove('d-none');
-
+                progressBar.style.width = "100%";
+                processSection.classList.add("d-none");
+                downloadSection.classList.remove("d-none");
             } catch (error) {
-                console.error('Error processing file:', error);
+                console.error("Error processing file:", error);
                 clearInterval(progressInterval);
                 progressText.textContent = `Error: ${error.message}`;
-                progressBar.classList.add('bg-danger');
+                progressBar.classList.add("bg-danger");
                 // Allow user to try again by resetting the UI after a delay
                 setTimeout(resetUI, 5000);
             }
@@ -161,57 +199,59 @@
 
         // --- UI Control ---
         function resetUI() {
-            uploadSection.classList.remove('d-none');
-            processSection.classList.add('d-none');
-            downloadSection.classList.add('d-none');
+            uploadSection.classList.remove("d-none");
+            processSection.classList.add("d-none");
+            downloadSection.classList.add("d-none");
 
-            fileInfo.classList.add('d-none');
+            fileInfo.classList.add("d-none");
             uploadedFile = null;
             processedFileBlob = null;
 
-            progressBar.style.width = '0%';
-            progressBar.classList.remove('bg-danger');
+            progressBar.style.width = "0%";
+            progressBar.classList.remove("bg-danger");
         }
 
         function simulateProgress() {
             let width = 10;
-            progressBar.style.width = width + '%';
+            progressBar.style.width = width + "%";
 
             progressInterval = setInterval(() => {
                 if (width < 95) {
-                     width += (100 - width) * 0.1;
-                     progressBar.style.width = width + '%';
+                    width += (100 - width) * 0.1;
+                    progressBar.style.width = width + "%";
                 }
             }, 800);
         }
 
         // --- Event Listeners ---
-        dropZone.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+        dropZone.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", (e) =>
+            handleFile(e.target.files[0]),
+        );
 
-        dropZone.addEventListener('dragover', (e) => {
+        dropZone.addEventListener("dragover", (e) => {
             e.preventDefault();
-            dropZone.classList.add('bg-secondary');
+            dropZone.classList.add("bg-secondary");
         });
 
-        dropZone.addEventListener('dragleave', (e) => {
+        dropZone.addEventListener("dragleave", (e) => {
             e.preventDefault();
-            dropZone.classList.remove('bg-secondary');
+            dropZone.classList.remove("bg-secondary");
         });
 
-        dropZone.addEventListener('drop', (e) => {
+        dropZone.addEventListener("drop", (e) => {
             e.preventDefault();
-            dropZone.classList.remove('bg-secondary');
+            dropZone.classList.remove("bg-secondary");
             handleFile(e.dataTransfer.files[0]);
         });
 
-        downloadBtn.addEventListener('click', () => {
+        downloadBtn.addEventListener("click", () => {
             if (processedFileBlob) {
                 const url = window.URL.createObjectURL(processedFileBlob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
+                const a = document.createElement("a");
+                a.style.display = "none";
                 a.href = url;
-                a.download = 'summarized_insights.xlsx';
+                a.download = "summarized_insights.xlsx";
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);
@@ -220,13 +260,13 @@
             resetUI();
         });
 
-        configBtn.addEventListener('click', () => {
+        configBtn.addEventListener("click", () => {
             loadPrompts();
             configModal.show();
         });
 
-        saveConfigBtn.addEventListener('click', savePrompts);
-        restoreDefaultsBtn.addEventListener('click', restoreDefaultPrompts);
+        saveConfigBtn.addEventListener("click", savePrompts);
+        restoreDefaultsBtn.addEventListener("click", restoreDefaultPrompts);
 
         // Initial Load
         loadPrompts();
