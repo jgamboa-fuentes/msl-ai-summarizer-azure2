@@ -13,8 +13,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read #This is required for actions/checkout
 
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +20,8 @@ jobs:
       - name: Set up Python version
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          # CHANGE 1: Set Python version to 3.11 for the build environment
+          python-version: '3.11'
 
       - name: Create and start virtual environment
         run: |
@@ -45,6 +44,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    environment:
+      name: 'Production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     
     steps:
       - name: Download artifact from build job
@@ -59,3 +61,5 @@ jobs:
           app-name: 'msl-ai-summarizer-azure'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_43BFCE023A884188A75056A39DA9AA8C }}
+          # CHANGE 2: Explicitly tell Azure to use Python 3.11 for the deployment
+          python-version: '3.11'
