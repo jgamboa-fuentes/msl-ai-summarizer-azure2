@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Home - MSL Insights AI Summarizer{% endblock %}
+{% block title %}MSL INSIGHTS AI ANALYSER{% endblock %}
 
 {% block content %}
 <div class="text-center mb-5">
@@ -13,11 +13,9 @@
     </p>
 </div>
 
-<!-- Main Card -->
 <div class="card">
     <div class="card-body p-4 p-md-5">
 
-        <!-- Step 1: Upload Section -->
         <div id="upload-section">
             <h4 class="card-title text-center mb-4">Step 1: Upload Your File</h4>
             <div id="drop-zone" class="border-2 border-dashed rounded-3 p-5 text-center cursor-pointer" style="border-style: dashed;">
@@ -28,7 +26,6 @@
             <div id="file-info" class="mt-3 text-center text-muted d-none"></div>
         </div>
 
-        <!-- Step 2: Process Section -->
         <div id="process-section" class="d-none">
             <h4 class="card-title text-center mb-4">Processing...</h4>
             <div class="progress" style="height: 30px;">
@@ -37,7 +34,6 @@
             <p id="progress-text" class="mt-3 text-center text-muted">Please wait while we process your document.</p>
         </div>
 
-        <!-- Step 3: Download Section -->
         <div id="download-section" class="d-none text-center">
             <h4 class="card-title text-success mb-3">
                 <i class="fas fa-check-circle"></i> Processing Complete!
@@ -125,7 +121,7 @@
 
             uploadSection.classList.add('d-none');
             processSection.classList.remove('d-none');
-            progressText.textContent = 'Uploading and processing... this may take a few minutes.';
+            progressText.textContent = 'Uploading and processing... this may take a moment.';
             simulateProgress();
 
             const formData = new FormData();
@@ -237,4 +233,3 @@
     });
 </script>
 {% endblock %}
-
