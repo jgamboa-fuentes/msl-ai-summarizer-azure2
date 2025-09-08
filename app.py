@@ -4,22 +4,26 @@ import openai
 import pandas as pd
 import asyncio
 from flask import Flask, render_template, request, jsonify, send_file
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Create and configure the Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-for-azure")
 
 # Initialize the async OpenAI client
-# Ensure your OPENAI_API_KEY is set as an environment variable in Azure
+# Your OPENAI_API_KEY must be set in your .env file locally, 
+# or in Azure App Service > Configuration > Application settings
 try:
     client = openai.AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 except TypeError:
     client = None # Handle case where key is not set
 
 # --- Concurrency Control ---
-# Limits the number of concurrent API calls to avoid rate limiting
+# This is now a constant, the semaphore object is created within the request
 CONCURRENCY_LIMIT = 15
-semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
 
 
 # --- Routes ---
@@ -33,6 +37,9 @@ def index():
 @app.route('/summarize', methods=['POST'])
 async def summarize_file():
     """Handles file upload and processes it with controlled concurrency."""
+    # Create the semaphore here, inside the async function, to avoid event loop conflicts
+    semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
+
     if 'file' not in request.files:
         return jsonify({"error": "No file part in the request."}), 400
 
@@ -58,7 +65,8 @@ async def summarize_file():
         for _, row in df.iterrows():
             statement = row[statement_column]
             for prompt in prompts:
-                tasks.append(get_summary_with_retries(statement, prompt))
+                # Pass the semaphore to the helper function
+                tasks.append(get_summary_with_retries(statement, prompt, semaphore))
 
         all_results = await asyncio.gather(*tasks)
 
@@ -87,7 +95,7 @@ async def summarize_file():
 
 # --- Helper Function with Semaphore and Retry Logic ---
 
-async def get_summary_with_retries(statement, prompt_template, max_retries=5):
+async def get_summary_with_retries(statement, prompt_template, semaphore, max_retries=5):
     """
     Asynchronously calls the OpenAI API, respecting the semaphore
     to limit concurrency and using exponential backoff for retries.
@@ -95,14 +103,14 @@ async def get_summary_with_retries(statement, prompt_template, max_retries=5):
     if not statement or pd.isna(statement):
         return ""
 
-    async with semaphore:
+    async with semaphore: # Use the passed-in semaphore
         base_delay = 1
         for attempt in range(max_retries):
             try:
                 full_prompt = prompt_template + f' "{statement}"'
                 
                 response = await client.chat.completions.create(
-                    model="gpt-4", # Using a standard model name
+                    model="gpt-4",
                     messages=[{"role": "user", "content": full_prompt}],
                     max_tokens=150,
                     temperature=0.7
@@ -126,5 +134,5 @@ async def get_summary_with_retries(statement, prompt_template, max_retries=5):
 
 
 if __name__ == '__main__':
-    # This part is useful for local testing but will be ignored by production servers like Gunicorn
+    # This part is for local testing
     app.run(host='0.0.0.0', port=5000, debug=True)
