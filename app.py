@@ -14,19 +14,19 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-for-azure")
 
 # Initialize the async OpenAI client
-# Your OPENAI_API_KEY must be set in your .env file locally, 
+# Your OPENAI_API_KEY must be set in your .env file locally,
 # or in Azure App Service > Configuration > Application settings
 try:
     client = openai.AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 except TypeError:
-    client = None # Handle case where key is not set
+    client = None  # Handle case where key is not set
 
 # --- Concurrency Control ---
 # This is now a constant, the semaphore object is created within the request
 CONCURRENCY_LIMIT = 15
 
-
 # --- Routes ---
+
 
 @app.route('/')
 def index():
@@ -47,13 +47,15 @@ async def summarize_file():
     if file.filename == '':
         return jsonify({"error": "No file was selected."}), 400
     if not client or not client.api_key:
-        return jsonify({"error": "OpenAI API key is not configured on the server."}), 500
+        return jsonify(
+            {"error": "OpenAI API key is not configured on the server."}), 500
 
     try:
         df = pd.read_excel(file)
         statement_column = "Statement (What)"
         if statement_column not in df.columns:
-            return jsonify({"error": f"Column '{statement_column}' not found."}), 400
+            return jsonify(
+                {"error": f"Column '{statement_column}' not found."}), 400
 
         prompts = [
             request.form.get('prompt1'),
@@ -66,14 +68,16 @@ async def summarize_file():
             statement = row[statement_column]
             for prompt in prompts:
                 # Pass the semaphore to the helper function
-                tasks.append(get_summary_with_retries(statement, prompt, semaphore))
+                tasks.append(
+                    get_summary_with_retries(statement, prompt, semaphore))
 
         all_results = await asyncio.gather(*tasks)
 
         # De-interleave the results back into the correct columns
         df['Prompt 1'] = all_results[0::3]
         df['Prompt 2'] = all_results[1::3]
-        df['Prompt 3'] = all_results[2::3]
+        #df['Prompt 3'] = all_results[2::3]
+        df['Prompt 3 (Insight Category)'] = all_results[2::3]
 
         # Save to an in-memory Excel file
         output = io.BytesIO()
@@ -83,10 +87,10 @@ async def summarize_file():
 
         return send_file(
             output,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            mimetype=
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
-            download_name='summarized_insights.xlsx'
-        )
+            download_name='summarized_insights.xlsx')
 
     except Exception as e:
         print(f"An error occurred in summarize_file: {e}")
@@ -95,7 +99,11 @@ async def summarize_file():
 
 # --- Helper Function with Semaphore and Retry Logic ---
 
-async def get_summary_with_retries(statement, prompt_template, semaphore, max_retries=5):
+
+async def get_summary_with_retries(statement,
+                                   prompt_template,
+                                   semaphore,
+                                   max_retries=5):
     """
     Asynchronously calls the OpenAI API, respecting the semaphore
     to limit concurrency and using exponential backoff for retries.
@@ -103,27 +111,31 @@ async def get_summary_with_retries(statement, prompt_template, semaphore, max_re
     if not statement or pd.isna(statement):
         return ""
 
-    async with semaphore: # Use the passed-in semaphore
+    async with semaphore:  # Use the passed-in semaphore
         base_delay = 1
         for attempt in range(max_retries):
             try:
                 full_prompt = prompt_template + f' "{statement}"'
-                
+
                 response = await client.chat.completions.create(
                     model="gpt-4",
-                    messages=[{"role": "user", "content": full_prompt}],
+                    messages=[{
+                        "role": "user",
+                        "content": full_prompt
+                    }],
                     max_tokens=150,
-                    temperature=0.7
-                )
+                    temperature=0.7)
                 return response.choices[0].message.content.strip()
 
             except openai.RateLimitError:
                 if attempt < max_retries - 1:
-                    delay = base_delay * (2 ** attempt)
+                    delay = base_delay * (2**attempt)
                     print(f"Rate limit hit. Retrying in {delay}s...")
                     await asyncio.sleep(delay)
                 else:
-                    print(f"Max retries reached for statement: {statement[:50]}...")
+                    print(
+                        f"Max retries reached for statement: {statement[:50]}..."
+                    )
                     return "API Error: Max retries exceeded (Rate Limit)."
 
             except Exception as e:
