@@ -117,15 +117,15 @@ async def get_summary_with_retries(statement,
             try:
                 full_prompt = prompt_template + f' "{statement}"'
 
-                response = await client.chat.completions.create(
-                    model="gpt-4",
-                    messages=[{
-                        "role": "user",
-                        "content": full_prompt
-                    }],
-                    max_tokens=150,
-                    temperature=0.7)
-                return response.choices[0].message.content.strip()
+                # CHANGE: Updated to use the new GPT-5 Responses API structure
+                response = await client.responses.create(
+                    model="gpt-5-nano",
+                    input=full_prompt,
+                    reasoning={"effort": "low"},
+                    text={"verbosity": "low"},
+                )
+                # CHANGE: The response object is different now
+                return response.output_text.strip()
 
             except openai.RateLimitError:
                 if attempt < max_retries - 1:
@@ -139,6 +139,7 @@ async def get_summary_with_retries(statement,
                     return "API Error: Max retries exceeded (Rate Limit)."
 
             except Exception as e:
+                # This will now catch errors like BadRequest from the new API
                 print(f"An unexpected API Error occurred: {e}")
                 return f"API Error: {type(e).__name__}"
 
