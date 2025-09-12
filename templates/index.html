@@ -106,9 +106,9 @@
         let progressInterval = null;
 
         const defaultPrompts = {
-            prompt1: `Return ONE concise medical insight (4–6 words). No preamble, no bullets, no quotes, no lists. If needed, reuse a term from the statement. Context: MSL for rare metabolic bone disorders / OI. Statement: `,
-            prompt2: `Return ONE concise medical insight (4–6 words). No preamble, no bullets, no quotes, no lists. If needed, reuse a term from the statement. Context: MSL for IEM (LC-FAOD, Sanfilippo, MPS VII, GSD1a, OTC). Statement: `,
-            prompt3: `Return EXACTLY ONE label (verbatim) from this list and nothing else: Biomarkers/Labs; CI / SOC; Competitive Intel; Conventional Therapies; Data Gaps; Dental; Diagnosis; Diagnosis/Genetic Testing; Disease State; DMP; DMP Registry; Dosing; Dosing/Administration; Dosing/Administration/Formulation; Education Gaps; Efficacy; Formulation; Genetic Testing; HEOR; Lab Diagnostics; Long-Term Patient Management; Med Info; Medication Access/Supply; MOA; MOD; Non-Bisphosphonate Treatments (OI); Other; Outcome Measures; Patient Pathway/Patient Journey; Payor; PROs; Research; Safety; Standard Of Care; Transition Of Care; Treatment Initiation; Unmet Need. Statement: `,
+            prompt1: `Act as if you're a medical science liaison at a mid-size pharmaceutical company with a specialization in rare metabolic and rare bone endocrine diseases. Please provide medical insights from this medical statement [column I] in two sentences or less.`,
+            prompt2: `Analyze the following medical statement and categorize it into exactly one of the following categories: Biomarkers/Labs, Standard of Care, Competitive Intelligence, Conventional Therapies, Data Gaps, Dental, Diagnosis, Diagnosis/Genetic Testing, Disease State, Dosing, Dosing/Administration, Education Gaps, Efficacy, Formulation, Genetic Testing, HEOR, Lab Diagnostics, Long-Term Patient Management, Med Info, Medication Access/Supply, MOA, MOD, Non-Bisphosphonate Treatments (OI), Other, Patient Pathway/Patient Journey, Research, Safety, Transition Of Care, Treatment Initiation, Unmet Need. Respond only with the single best-matching category. Efficacy and safety refer to comments related to UX143 or setrusumab. Competitive intelligence refers to medications not in development by Ultragenyx.`,
+            prompt3: `Based on the preceding Medical Insight and its assigned Category, develop a two-sentence summary statement to provide insight into health care provider perspectives. Do not repeat the initial insight or category.`,
         };
 
         // --- Prompt Management ---
@@ -139,7 +139,6 @@
             uploadedFile = file;
             fileInfo.textContent = `Selected file: ${file.name}`;
             fileInfo.classList.remove("d-none");
-            // A file is selected, so trigger the process immediately.
             startSummarization();
         }
 
@@ -182,7 +181,6 @@
 
                 processedFileBlob = await response.blob();
 
-                // Finalize progress and show download section
                 clearInterval(progressInterval);
                 progressBar.style.width = "100%";
                 processSection.classList.add("d-none");
@@ -192,7 +190,6 @@
                 clearInterval(progressInterval);
                 progressText.textContent = `Error: ${error.message}`;
                 progressBar.classList.add("bg-danger");
-                // Allow user to try again by resetting the UI after a delay
                 setTimeout(resetUI, 5000);
             }
         }
@@ -202,11 +199,9 @@
             uploadSection.classList.remove("d-none");
             processSection.classList.add("d-none");
             downloadSection.classList.add("d-none");
-
             fileInfo.classList.add("d-none");
             uploadedFile = null;
             processedFileBlob = null;
-
             progressBar.style.width = "0%";
             progressBar.classList.remove("bg-danger");
         }
@@ -214,7 +209,6 @@
         function simulateProgress() {
             let width = 10;
             progressBar.style.width = width + "%";
-
             progressInterval = setInterval(() => {
                 if (width < 95) {
                     width += (100 - width) * 0.1;
@@ -228,23 +222,19 @@
         fileInput.addEventListener("change", (e) =>
             handleFile(e.target.files[0]),
         );
-
         dropZone.addEventListener("dragover", (e) => {
             e.preventDefault();
             dropZone.classList.add("bg-secondary");
         });
-
         dropZone.addEventListener("dragleave", (e) => {
             e.preventDefault();
             dropZone.classList.remove("bg-secondary");
         });
-
         dropZone.addEventListener("drop", (e) => {
             e.preventDefault();
             dropZone.classList.remove("bg-secondary");
             handleFile(e.dataTransfer.files[0]);
         });
-
         downloadBtn.addEventListener("click", () => {
             if (processedFileBlob) {
                 const url = window.URL.createObjectURL(processedFileBlob);
@@ -259,12 +249,10 @@
             }
             resetUI();
         });
-
         configBtn.addEventListener("click", () => {
             loadPrompts();
             configModal.show();
         });
-
         saveConfigBtn.addEventListener("click", savePrompts);
         restoreDefaultsBtn.addEventListener("click", restoreDefaultPrompts);
 

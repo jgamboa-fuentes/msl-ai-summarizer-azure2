@@ -99,33 +99,37 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="prompt1" class="form-label"
-                                >Prompt 1 (Rare Metabolic Bone / OI)</label
+                                >Prompt 1: Medical Insight</label
                             >
                             <textarea
                                 id="prompt1"
                                 class="form-control"
-                                rows="4"
+                                rows="3"
                             ></textarea>
                         </div>
                         <div class="mb-3">
                             <label for="prompt2" class="form-label"
-                                >Prompt 2 (IEM)</label
+                                >Prompt 2: Categorization</label
                             >
                             <textarea
                                 id="prompt2"
                                 class="form-control"
-                                rows="4"
+                                rows="5"
                             ></textarea>
                         </div>
-                        <div>
+                        <div class="mb-3">
                             <label for="prompt3" class="form-label"
-                                >Prompt 3 (Insight Category)</label
+                                >Prompt 3: Resummarization</label
                             >
+                            <small class="form-text text-muted d-block mb-2">
+                                This prompt uses the output of Prompt 1 and
+                                Prompt 2 as its input statement.
+                            </small>
                             <textarea
                                 id="prompt3"
                                 name="prompt3"
                                 class="form-control"
-                                rows="6"
+                                rows="3"
                             ></textarea>
                         </div>
                     </div>

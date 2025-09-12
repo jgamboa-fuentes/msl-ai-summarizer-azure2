@@ -2,11 +2,11 @@
   <img src="https://raw.githubusercontent.com/jgamboa-fuentes/msl-ai-summarizer-azure2/main/static/assets/dmLogo.png" alt="Data Management Logo" width="150">
 </p>
 
-# MSL Insights AI Analyser
+# MSL Insights AI Analyser V2
 
-**Author**: Enrique Gamboa, Sep 8 2025
+**Author**: Enrique Gamboa, Sep 12 2025
 
-This web application is an AI-powered tool designed to accelerate the analysis of Medical Science Liaison (MSL) insights. It allows users to upload an Excel file containing medical statements and automatically generates three distinct summaries or classifications for each statement using the power of the OpenAI API.
+This web application is an AI-powered tool designed to accelerate the analysis of Medical Science Liaison (MSL) insights. It allows users to upload an Excel file containing medical statements and automatically generates three distinct, sequential insights for each statement using the power of the OpenAI API.
 
 ## Live Demo
 
@@ -14,28 +14,30 @@ You can test the deployed application here:
 
 [msl-ai-summarizer-azure-dyabhge8a9c4a4aa.canadacentral-01.azurewebsites.net](http://msl-ai-summarizer-azure-dyabhge8a9c4a4aa.canadacentral-01.azurewebsites.net)
 
-## How It Works
+## How It Works (V2 Logic)
 
-The application follows a simple but powerful workflow to process user data securely and efficiently.
+The application follows a sequential, row-by-row workflow to generate multi-layered insights.
 
-1.  **File Upload**: The user visits the web interface and uploads an Excel file. The frontend is designed with a drag-and-drop zone for ease of use. The file is expected to contain a column named `"Statement (What)"`.
+1.  **File Upload**: The user visits the web interface and uploads an Excel file. The file is expected to contain a column named `"Statement (What)"`.
 
-2.  **Backend Processing**: The file is sent to the Flask backend. The server uses the `pandas` library to read the Excel data into a DataFrame, which allows for efficient data manipulation.
+2.  **Backend Processing**: The file is sent to the Flask backend, where it is loaded into a Pandas DataFrame.
 
-3.  **Asynchronous API Calls**: For each row in the uploaded file, the application creates three separate analysis tasks—one for each of the pre-configured prompts. To handle a large number of requests efficiently and avoid API rate limits, the application uses Python's `asyncio` library. A `Semaphore` is implemented to limit the number of concurrent calls to the OpenAI API to 15 at a time.
+3.  **Asynchronous API Calls (Sequential Analysis)**: For each row in the uploaded file, the application performs a three-step analysis:
+    * **Prompt 1 & 2 (Parallel)**: The original statement is sent to the AI to generate a **Medical Insight** (Prompt 1) and a **Category** (Prompt 2) simultaneously.
+    * **Prompt 3 (Sequential)**: The results from the first two prompts are combined into a new input. This new input is then sent to the AI with a third prompt to generate a final **Resummarization**. This creates a powerful, context-aware analysis for each individual row.
 
-4.  **OpenAI Integration**: Each task calls the OpenAI API. The function includes robust error handling with a retry mechanism that uses exponential backoff in case of rate limit errors, ensuring a high success rate.
+4.  **OpenAI Integration**: All API calls use a robust error handling and retry mechanism with exponential backoff to ensure a high success rate. Concurrency is managed with an `asyncio` Semaphore to avoid API rate limits.
 
-5.  **Data Aggregation**: Once all the asynchronous tasks are complete, the application gathers the AI-generated responses.
+5.  **Data Aggregation**: Once all asynchronous tasks are complete, the application gathers the three new AI-generated values for each row.
 
-6.  **Output Generation**: The three new insights are added as new columns (`'Prompt 1'`, `'Prompt 2'`, `'Prompt 3'`) to the original DataFrame. The updated DataFrame is then written to an in-memory Excel file using `XlsxWriter`.
+6.  **Output Generation**: The three new insights are added as new columns (`'Prompt 1'`, `'Prompt 2'`, `'Prompt 3'`) to the original DataFrame. The updated DataFrame is then written to a single-sheet, in-memory Excel file.
 
-7.  **File Download**: The newly generated Excel file, containing both the original data and the AI-generated insights, is sent back to the user's browser as a downloadable file named `summarized_insights.xlsx`.
+7.  **File Download**: The newly generated Excel file, containing the original data and all three AI-generated insights, is sent back to the user's browser as a downloadable file named `summarized_insights.xlsx`.
 
 ## Technologies Used
 
 * **Backend**: Flask, Gunicorn, Uvicorn
-* **AI Integration**: OpenAI API (`gpt-4o`)
+* **AI Integration**: OpenAI API (`gpt-5-nano`)
 * **Data Handling**: Pandas
 * **Asynchronous Operations**: `asyncio`
 * **Frontend**: HTML5, Bootstrap 5, JavaScript
@@ -82,4 +84,4 @@ To run this project on your local machine, follow these steps:
 
 ## Configuration
 
-The three prompts used for analysis are configurable directly from the web interface. Click the **Configure Prompts** button to modify them. The prompts are saved in the browser's local storage for future sessions.
+All three prompts used for the sequential analysis are configurable from the web interface. Click the **Configure Prompts** button to modify them. Helper text is included to clarify that Prompt 3 uses the output from the first two as its input.

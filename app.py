@@ -14,15 +14,12 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-for-azure")
 
 # Initialize the async OpenAI client
-# Your OPENAI_API_KEY must be set in your .env file locally,
-# or in Azure App Service > Configuration > Application settings
 try:
     client = openai.AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 except TypeError:
-    client = None  # Handle case where key is not set
+    client = None
 
 # --- Concurrency Control ---
-# This is now a constant, the semaphore object is created within the request
 CONCURRENCY_LIMIT = 15
 
 # --- Routes ---
@@ -36,10 +33,7 @@ def index():
 
 @app.route('/summarize', methods=['POST'])
 async def summarize_file():
-    """Handles file upload and processes it with controlled concurrency."""
-    # Create the semaphore here, inside the async function, to avoid event loop conflicts
-    semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
-
+    """Handles file upload and processes it sequentially for Prompt 3."""
     if 'file' not in request.files:
         return jsonify({"error": "No file part in the request."}), 400
 
@@ -57,32 +51,30 @@ async def summarize_file():
             return jsonify(
                 {"error": f"Column '{statement_column}' not found."}), 400
 
-        prompts = [
-            request.form.get('prompt1'),
-            request.form.get('prompt2'),
-            request.form.get('prompt3')
+        prompts_from_form = {
+            'prompt1': request.form.get('prompt1'),
+            'prompt2': request.form.get('prompt2'),
+            'prompt3': request.form.get('prompt3')
+        }
+
+        # Create tasks for each row
+        tasks = [
+            process_row(row, statement_column, prompts_from_form)
+            for _, row in df.iterrows()
         ]
 
-        tasks = []
-        for _, row in df.iterrows():
-            statement = row[statement_column]
-            for prompt in prompts:
-                # Pass the semaphore to the helper function
-                tasks.append(
-                    get_summary_with_retries(statement, prompt, semaphore))
+        # Gather all processed row results
+        results = await asyncio.gather(*tasks)
 
-        all_results = await asyncio.gather(*tasks)
+        # Create new columns from the results
+        df['Prompt 1'] = [res[0] for res in results]
+        df['Prompt 2'] = [res[1] for res in results]
+        df['Prompt 3'] = [res[2] for res in results]
 
-        # De-interleave the results back into the correct columns
-        df['Prompt 1'] = all_results[0::3]
-        df['Prompt 2'] = all_results[1::3]
-        #df['Prompt 3'] = all_results[2::3]
-        df['Prompt 3 (Insight Category)'] = all_results[2::3]
-
-        # Save to an in-memory Excel file
+        # Save to a single-sheet in-memory Excel file
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df.to_excel(writer, index=False)
+            df.to_excel(writer, index=False, sheet_name='Detailed Insights')
         output.seek(0)
 
         return send_file(
@@ -97,7 +89,31 @@ async def summarize_file():
         return jsonify({"error": str(e)}), 500
 
 
-# --- Helper Function with Semaphore and Retry Logic ---
+async def process_row(row, statement_column, prompts):
+    """
+    Processes a single row: runs prompts 1 & 2 in parallel,
+    then uses their output for prompt 3.
+    """
+    semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
+    original_statement = row[statement_column]
+
+    # Step 1: Run Prompt 1 and Prompt 2 in parallel
+    p1_task = get_summary_with_retries(original_statement, prompts['prompt1'],
+                                       semaphore)
+    p2_task = get_summary_with_retries(original_statement, prompts['prompt2'],
+                                       semaphore)
+
+    prompt1_result, prompt2_result = await asyncio.gather(p1_task, p2_task)
+
+    # Step 2: Construct the input for Prompt 3 from the results of P1 and P2
+    statement_for_prompt3 = f"Medical Insight was: '{prompt1_result}'. Assigned Category was: '{prompt2_result}'."
+
+    # Step 3: Run Prompt 3
+    prompt3_result = await get_summary_with_retries(statement_for_prompt3,
+                                                    prompts['prompt3'],
+                                                    semaphore)
+
+    return prompt1_result, prompt2_result, prompt3_result
 
 
 async def get_summary_with_retries(statement,
@@ -105,26 +121,27 @@ async def get_summary_with_retries(statement,
                                    semaphore,
                                    max_retries=5):
     """
-    Asynchronously calls the OpenAI API, respecting the semaphore
-    to limit concurrency and using exponential backoff for retries.
+    Asynchronously calls the OpenAI API.
     """
-    if not statement or pd.isna(statement):
+    if not statement or (isinstance(statement, float) and pd.isna(statement)):
         return ""
 
-    async with semaphore:  # Use the passed-in semaphore
+    if not prompt_template:
+        return "Error: Missing prompt template."
+
+    async with semaphore:
         base_delay = 1
         for attempt in range(max_retries):
             try:
-                full_prompt = prompt_template + f' "{statement}"'
+                # This logic now handles both types of prompts
+                full_prompt = f'{prompt_template} The statement to analyze is: "{statement}"'
 
-                # CHANGE: Updated to use the new GPT-5 Responses API structure
                 response = await client.responses.create(
                     model="gpt-5-nano",
                     input=full_prompt,
                     reasoning={"effort": "low"},
                     text={"verbosity": "low"},
                 )
-                # CHANGE: The response object is different now
                 return response.output_text.strip()
 
             except openai.RateLimitError:
@@ -133,13 +150,8 @@ async def get_summary_with_retries(statement,
                     print(f"Rate limit hit. Retrying in {delay}s...")
                     await asyncio.sleep(delay)
                 else:
-                    print(
-                        f"Max retries reached for statement: {statement[:50]}..."
-                    )
                     return "API Error: Max retries exceeded (Rate Limit)."
-
             except Exception as e:
-                # This will now catch errors like BadRequest from the new API
                 print(f"An unexpected API Error occurred: {e}")
                 return f"API Error: {type(e).__name__}"
 
@@ -147,5 +159,4 @@ async def get_summary_with_retries(statement,
 
 
 if __name__ == '__main__':
-    # This part is for local testing
     app.run(host='0.0.0.0', port=5000, debug=True)
