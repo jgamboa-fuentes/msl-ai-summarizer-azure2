@@ -106,7 +106,8 @@
         let progressInterval = null;
 
         const defaultPrompts = {
-            prompt1: `Act as if you're a medical science liaison at a mid-size pharmaceutical company with a specialization in rare metabolic and rare bone endocrine diseases. Please provide medical insights from this medical statement [column I] in two sentences or less.`,
+            // UPDATED: Removed "[column I]" from prompt1
+            prompt1: `Act as if you're a medical science liaison at a mid-size pharmaceutical company with a specialization in rare metabolic and rare bone endocrine diseases. Please provide medical insights from the following medical statement in two sentences or less.`,
             prompt2: `Analyze the following medical statement and categorize it into exactly one of the following categories: Biomarkers/Labs, Standard of Care, Competitive Intelligence, Conventional Therapies, Data Gaps, Dental, Diagnosis, Diagnosis/Genetic Testing, Disease State, Dosing, Dosing/Administration, Education Gaps, Efficacy, Formulation, Genetic Testing, HEOR, Lab Diagnostics, Long-Term Patient Management, Med Info, Medication Access/Supply, MOA, MOD, Non-Bisphosphonate Treatments (OI), Other, Patient Pathway/Patient Journey, Research, Safety, Transition Of Care, Treatment Initiation, Unmet Need. Respond only with the single best-matching category. Efficacy and safety refer to comments related to UX143 or setrusumab. Competitive intelligence refers to medications not in development by Ultragenyx.`,
             prompt3: `Based on the preceding Medical Insight and its assigned Category, develop a two-sentence summary statement to provide insight into health care provider perspectives. Do not repeat the initial insight or category.`,
         };
