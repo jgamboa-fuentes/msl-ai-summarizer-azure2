@@ -75,8 +75,12 @@ To run this project on your local machine, follow these steps:
     ```
     OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     ```
+    githubcodespace
+    ```
+    echo "OPENAI_API_KEY=sk-proj-xxx" > .env 
+    ```
 
-5.  **Run the Application**
+6.  **Run the Application**
     ```sh
     flask run
     ```
