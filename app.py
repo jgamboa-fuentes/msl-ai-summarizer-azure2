@@ -33,7 +33,7 @@ def index():
 
 @app.route('/summarize', methods=['POST'])
 async def summarize_file():
-    """Handles file upload and processes it sequentially for Prompt 3."""
+    """Handles file upload and processes it with the new Prompt 3 logic."""
     if 'file' not in request.files:
         return jsonify({"error": "No file part in the request."}), 400
 
@@ -57,19 +57,42 @@ async def summarize_file():
             'prompt3': request.form.get('prompt3')
         }
 
-        # Create tasks for each row
+        # --- Step 1 & 2: Run Prompt 1 and Prompt 2 in parallel ---
         tasks = [
-            process_row(row, statement_column, prompts_from_form)
+            process_prompts_1_and_2(row, statement_column, prompts_from_form)
             for _, row in df.iterrows()
         ]
+        results_p1_p2 = await asyncio.gather(*tasks)
+        df['Prompt 1'] = [res[0] for res in results_p1_p2]
+        df['Prompt 2'] = [res[1] for res in results_p1_p2]
 
-        # Gather all processed row results
-        results = await asyncio.gather(*tasks)
+        # --- Step 3: New logic for Prompt 3 ---
+        grouped = df.groupby(['Disease State', 'Prompt 2'])
+        summary_tasks = []
+        for name, group in grouped:
+            # Concatenate "Statement (What)" for the group
+            statements_to_summarize = " ".join(group[statement_column].astype(str))
+            # Create a task to get the summary for the concatenated statements
+            summary_tasks.append(
+                get_summary_with_retries(
+                    statements_to_summarize,
+                    "Provide a two-sentence summary of the following: ", # Generic prompt for summarization
+                    asyncio.Semaphore(CONCURRENCY_LIMIT)
+                )
+            )
 
-        # Create new columns from the results
-        df['Prompt 1'] = [res[0] for res in results]
-        df['Prompt 2'] = [res[1] for res in results]
-        df['Prompt 3'] = [res[2] for res in results]
+        # Get all the summaries
+        group_summaries = await asyncio.gather(*summary_tasks)
+
+        # Create a mapping from group name to summary
+        summary_map = {name: summary for name, summary in zip(grouped.groups.keys(), group_summaries)}
+
+        # Map the summaries back to the original DataFrame
+        df['Prompt 3'] = df.apply(
+            lambda row: summary_map.get((row['Disease State'], row['Prompt 2'])),
+            axis=1
+        )
+
 
         # Save to a single-sheet in-memory Excel file
         output = io.BytesIO()
@@ -89,31 +112,20 @@ async def summarize_file():
         return jsonify({"error": str(e)}), 500
 
 
-async def process_row(row, statement_column, prompts):
+async def process_prompts_1_and_2(row, statement_column, prompts):
     """
-    Processes a single row: runs prompts 1 & 2 in parallel,
-    then uses their output for prompt 3.
+    Processes a single row for prompts 1 & 2 in parallel.
     """
     semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
     original_statement = row[statement_column]
 
-    # Step 1: Run Prompt 1 and Prompt 2 in parallel
     p1_task = get_summary_with_retries(original_statement, prompts['prompt1'],
                                        semaphore)
     p2_task = get_summary_with_retries(original_statement, prompts['prompt2'],
                                        semaphore)
 
     prompt1_result, prompt2_result = await asyncio.gather(p1_task, p2_task)
-
-    # Step 2: Construct the input for Prompt 3 from the results of P1 and P2
-    statement_for_prompt3 = f"Medical Insight was: '{prompt1_result}'. Assigned Category was: '{prompt2_result}'."
-
-    # Step 3: Run Prompt 3
-    prompt3_result = await get_summary_with_retries(statement_for_prompt3,
-                                                    prompts['prompt3'],
-                                                    semaphore)
-
-    return prompt1_result, prompt2_result, prompt3_result
+    return prompt1_result, prompt2_result
 
 
 async def get_summary_with_retries(statement,

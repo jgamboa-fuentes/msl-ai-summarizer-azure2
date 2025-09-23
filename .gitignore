@@ -1,0 +1,8 @@
+# Environment Variables
+# Prevent API keys and other secrets from being committed.
+.env
+
+# Virtual Environment
+# The venv folder contains packages that can be reinstalled from requirements.txt.
+venv/
+.venv/

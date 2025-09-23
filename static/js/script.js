@@ -2,9 +2,9 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Flask app loaded successfully!');
-    
+
     // Add your custom JavaScript here
-    
+
     // Example: Add smooth scrolling for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
     // Example: Add loading states for forms
     const forms = document.querySelectorAll('form');
     forms.forEach(form => {
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
     // Add your custom functionality here
 });
 
@@ -41,7 +41,7 @@ function showAlert(message, type = 'info') {
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    
+
     const container = document.querySelector('.container');
     if (container) {
         container.insertBefore(alertDiv, container.firstChild);

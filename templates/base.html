@@ -119,11 +119,10 @@
                         </div>
                         <div class="mb-3">
                             <label for="prompt3" class="form-label"
-                                >Prompt 3: Resummarization</label
+                                >Prompt 3: Grouped Summary</label
                             >
                             <small class="form-text text-muted d-block mb-2">
-                                This prompt uses the output of Prompt 1 and
-                                Prompt 2 as its input statement.
+                                This prompt will be applied to a group of statements. The system will first group your data by 'Disease State' and the output of 'Prompt 2'. Then, for each group, it will combine all the 'Statement (What)' entries and generate a two-sentence summary. All rows in the same group will receive the same summary.
                             </small>
                             <textarea
                                 id="prompt3"
