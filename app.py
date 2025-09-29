@@ -56,20 +56,33 @@ async def summarize_file():
             'prompt2': request.form.get('prompt2'),
             'prompt3': request.form.get('prompt3')
         }
+        
+        total_rows = len(df)
+        print(f"Processing file with {total_rows} rows.")
 
         # --- Step 1 & 2: Run Prompt 1 and Prompt 2 in parallel ---
-        tasks = [
-            process_prompts_1_and_2(row, statement_column, prompts_from_form)
-            for _, row in df.iterrows()
-        ]
-        results_p1_p2 = await asyncio.gather(*tasks)
+        print("Starting Prompt 1 and 2 generation...")
+        tasks = []
+        for index, row in df.iterrows():
+            tasks.append(process_prompts_1_and_2(row, statement_column, prompts_from_form))
+        
+        results_p1_p2 = []
+        for i, task in enumerate(asyncio.as_completed(tasks)):
+            results_p1_p2.append(await task)
+            print(f"Prompt 1 & 2: ({i + 1} of {total_rows}) completed.")
+
         df['Prompt 1'] = [res[0] for res in results_p1_p2]
         df['Prompt 2'] = [res[1] for res in results_p1_p2]
+        print("Prompt 1 and 2 generation completed.")
+
 
         # --- Step 3: New logic for Prompt 3 ---
+        print("Starting Prompt 3 generation...")
         grouped = df.groupby(['Disease State', 'Prompt 2'])
         summary_tasks = []
-        for name, group in grouped:
+        
+        total_groups = len(grouped)
+        for i, (name, group) in enumerate(grouped):
             # Concatenate "Prompt 1" for the group
             statements_to_summarize = " ".join(group['Prompt 1'].astype(str))
             # Create a task to get the summary for the concatenated statements
@@ -80,9 +93,13 @@ async def summarize_file():
                     asyncio.Semaphore(CONCURRENCY_LIMIT)
                 )
             )
+        
+        group_summaries = []
+        for i, task in enumerate(asyncio.as_completed(summary_tasks)):
+            group_summaries.append(await task)
+            print(f"Prompt 3: ({i + 1} of {total_groups}) completed.")
 
-        # Get all the summaries
-        group_summaries = await asyncio.gather(*summary_tasks)
+        print("Prompt 3 generation completed.")
 
         # Create a mapping from group name to summary
         summary_map = {name: summary for name, summary in zip(grouped.groups.keys(), group_summaries)}
@@ -92,6 +109,8 @@ async def summarize_file():
             lambda row: summary_map.get((row['Disease State'], row['Prompt 2'])),
             axis=1
         )
+        
+        print("File processing complete. Generating Excel file for download.")
 
 
         # Save to a single-sheet in-memory Excel file
