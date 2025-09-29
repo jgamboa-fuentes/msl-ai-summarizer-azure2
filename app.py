@@ -70,8 +70,8 @@ async def summarize_file():
         grouped = df.groupby(['Disease State', 'Prompt 2'])
         summary_tasks = []
         for name, group in grouped:
-            # Concatenate "Statement (What)" for the group
-            statements_to_summarize = " ".join(group[statement_column].astype(str))
+            # Concatenate "Prompt 1" for the group
+            statements_to_summarize = " ".join(group['Prompt 1'].astype(str))
             # Create a task to get the summary for the concatenated statements
             summary_tasks.append(
                 get_summary_with_retries(
